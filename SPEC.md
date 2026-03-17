@@ -82,71 +82,52 @@ None of these give you the "define a resource, get everything" DX that Ash provi
 import { observable } from '@legendapp/state'
 import { configureSynced } from '@legendapp/state/sync'
 import { syncedAsh } from 'synced-ash'
-import { Socket } from 'phoenix'
+import { observablePersistIndexedDB } from '@legendapp/state/persist-plugins/indexeddb'
+import { subscribeToResource } from './realtime'
 
-// One-time global config
+const persistPlugin = observablePersistIndexedDB({
+  databaseName: 'my-app-sync',
+  version: 1,
+  tableNames: ['todos'],
+})
+
 const sync = configureSynced(syncedAsh, {
-  // Phoenix Channel connection for real-time invalidation
-  socket: new Socket('/socket', { params: { token: authToken } }),
-  channelTopic: 'ash:sync',
-
-  // Local persistence defaults
   persist: {
-    plugin: ObservablePersistIndexedDB,
-    retrySync: true,    // retry failed mutations on reconnect
+    plugin: persistPlugin,
+    retrySync: true,
   },
-
-  // Sync behavior
-  debounceSet: 500,           // debounce rapid mutations
-  changesSince: 'last-sync',  // incremental sync
-  retry: { infinite: true },  // retry on network failure
-
-  // Auth
-  waitFor: isAuthed$,         // don't sync until authenticated
+  subscribeResource: subscribeToResource,
+  changesSince: 'last-sync',
+  retry: { infinite: true },
 })
 ```
 
 ### Defining Collections
 
 ```typescript
-// Import generated ash_typescript RPC functions
-import {
-  listTodos, createTodo, updateTodo, deleteTodo, getTodo
-} from './generated/ash_rpc'
+import { observable } from '@legendapp/state'
+import { defineAshResource } from '@/lib/syncedAsh'
+import { listTodos, listTodosSince } from './generated/ash_rpc'
 
-// List (collection of items keyed by id)
-const todos$ = observable(sync({
-  list: (params) => listTodos({
-    fields: ['id', 'title', 'completed', 'updatedAt'],
-    filter: params?.where,
-    page: params?.page,
-  }),
-  create: (input) => createTodo({
-    input,
-    fields: ['id', 'title', 'completed', 'createdAt', 'updatedAt'],
-  }),
-  update: (input) => updateTodo({
-    input,
-    fields: ['id', 'title', 'completed', 'updatedAt'],
-  }),
-  delete: ({ id }) => deleteTodo({ input: { id } }),
-  persist: { name: 'todos' },
-  // Subscribe to real-time changes for this resource
+const todosResource = defineAshResource({
   resourceName: 'Todo',
+  fields: ['id', 'title', 'completed', 'createdAt', 'updatedAt'],
+  schema: todoSchema,
+  list: listTodos,
+  listSince: listTodosSince,
+})
+
+const todos$ = observable(sync({
+  ...todosResource,
+  persist: { name: 'todos' },
 }))
 
-// Single item (get by id)
-const profile$ = observable(sync({
-  get: () => getProfile({
-    fields: ['id', 'name', 'email', 'avatarUrl', 'updatedAt'],
-  }),
-  update: (input) => updateProfile({
-    input,
-    fields: ['id', 'name', 'email', 'avatarUrl', 'updatedAt'],
-  }),
-  persist: { name: 'profile' },
-  resourceName: 'Profile',
-}))
+// The plugin owns:
+// - RPC envelope unwrapping
+// - list/results normalization
+// - createdAt/updatedAt/archivedAt coercion
+// - incremental listSince(lastSync) switching
+// - realtime subscription wiring via subscribeResource
 ```
 
 ### Usage in Components

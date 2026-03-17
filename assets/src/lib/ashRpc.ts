@@ -18,7 +18,7 @@ import {
   type MemeLine,
   type MemeTemplate,
 } from './types'
-import { ashRpcHeaders, createAshCollectionRpc, unwrapAshResult } from './ashSync'
+import { defineAshResource, runAshAction } from './syncedAsh'
 
 const templateFields = [
   'id',
@@ -49,7 +49,8 @@ function buildLabel(templateName: string, lines: MemeLine[]): string {
   const fragments = lines.map((line) => line.text.trim()).filter(Boolean)
   return fragments.join(' · ').slice(0, 88) || templateName
 }
-export const templatesCollectionRpc = createAshCollectionRpc<MemeTemplate, typeof templateFields>({
+export const templatesResource = defineAshResource<MemeTemplate, typeof templateFields>({
+  resourceName: 'MemeTemplate',
   defaults: {
     aiPlacements: [],
   },
@@ -59,10 +60,11 @@ export const templatesCollectionRpc = createAshCollectionRpc<MemeTemplate, typeo
   schema: memeTemplateSchema,
 })
 
-export const memesCollectionRpc = createAshCollectionRpc<Meme, typeof memeFields>({
+export const memesResource = defineAshResource<Meme, typeof memeFields>({
   fields: memeFields,
   list: listMemes,
   listSince: listMemesSince,
+  resourceName: 'Meme',
   schema: memeSchema,
   sort: (left, right) => right.createdAt - left.createdAt,
 })
@@ -73,16 +75,14 @@ export async function createMemeRecord(input: {
   renderDataUrl?: string | null
 }): Promise<Meme> {
   const lines = input.lines.map((line) => memeLineSchema.parse(line))
-  const response = await createMeme({
-    headers: ashRpcHeaders(),
+  return runAshAction({
+    action: createMeme,
     input: {
       templateId: input.template.id,
       label: buildLabel(input.template.name, lines),
       lines,
       renderDataUrl: input.renderDataUrl ?? null,
     },
-    fields: memeFields,
+    resource: memesResource,
   })
-
-  return memesCollectionRpc.parse(unwrapAshResult(response))
 }

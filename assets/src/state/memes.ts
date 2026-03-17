@@ -1,18 +1,19 @@
-import { memesCollectionRpc, templatesCollectionRpc } from '@/lib/ashRpc'
+import { observable } from '@legendapp/state'
+
+import { memesResource, templatesResource } from '@/lib/ashRpc'
 import type { Meme, MemeTemplate } from '@/lib/types'
-import { createSyncedAshCollection, syncCollection, useSyncedCollection } from './syncedAsh'
+import { syncCollection } from '@/lib/syncedAsh'
+import { syncAsh, useSyncedCollection } from './sync'
 
-export const templates$ = createSyncedAshCollection<MemeTemplate>({
-  persistName: 'templates',
-  resourceName: 'MemeTemplate',
-  rpc: templatesCollectionRpc,
-})
+export const templates$ = observable(syncAsh({
+  ...templatesResource,
+  persist: { name: 'templates' },
+}))
 
-export const memes$ = createSyncedAshCollection<Meme>({
-  persistName: 'memes',
-  resourceName: 'Meme',
-  rpc: memesCollectionRpc,
-})
+export const memes$ = observable(syncAsh({
+  ...memesResource,
+  persist: { name: 'memes' },
+}))
 
 export async function ensureMemeDataLoaded() {
   await Promise.all([syncCollection(templates$), syncCollection(memes$)])
