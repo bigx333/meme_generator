@@ -13,6 +13,7 @@ defmodule AshTypescript.Rpc.Codegen do
   alias AshTypescript.Codegen.TypeDiscovery
   alias AshTypescript.Rpc.Codegen.FunctionGenerators.ChannelRenderer
   alias AshTypescript.Rpc.Codegen.FunctionGenerators.HttpRenderer
+  alias AshTypescript.Rpc.Codegen.FunctionGenerators.ResourceMetadata
   alias AshTypescript.Rpc.Codegen.FunctionGenerators.TypedQueries
   alias AshTypescript.Rpc.Codegen.Helpers.ActionIntrospection
   alias AshTypescript.Rpc.Codegen.RpcConfigCollector
@@ -410,6 +411,8 @@ defmodule AshTypescript.Rpc.Codegen do
     #{TypescriptStatic.generate_helper_functions(hook_config, endpoint_process, endpoint_validate)}
 
     #{TypedQueries.generate_typed_queries_section(typed_queries, rpc_resources_and_actions, all_resources_for_schemas)}
+
+    #{ResourceMetadata.generate_resource_metadata_section(rpc_resources_and_actions)}
 
     #{generate_rpc_functions(rpc_resources_and_actions, otp_app, all_resources_for_schemas)}
     """

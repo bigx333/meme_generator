@@ -79,7 +79,7 @@ defmodule AshTypescript.Rpc.Codegen.FunctionGenerators.TypedQueries do
     case RequestedFieldsProcessor.process(resource, action.name, atomized_fields) do
       {:ok, {_select, _load, _template}} ->
         # Both type and const need to use mapped field names since UserResourceSchema has mapped names
-        type_fields = format_typed_query_fields_type_for_typescript(atomized_fields, resource)
+        type_fields = format_fields_type_for_typescript(atomized_fields, resource)
 
         # Type names are always PascalCase in TypeScript
         type_name =
@@ -99,7 +99,7 @@ defmodule AshTypescript.Rpc.Codegen.FunctionGenerators.TypedQueries do
             "InferResult<#{resource_name}ResourceSchema, #{type_fields}>"
           end
 
-        const_fields = format_typed_query_fields_const_for_typescript(atomized_fields, resource)
+        const_fields = format_fields_const_for_typescript(atomized_fields, resource)
 
         fields_type = find_matching_rpc_fields_type(resource, action, rpc_resources_and_actions)
         jsdoc = JsdocGenerator.generate_typed_query_jsdoc(typed_query, resource)
@@ -145,11 +145,17 @@ defmodule AshTypescript.Rpc.Codegen.FunctionGenerators.TypedQueries do
     end
   end
 
-  defp format_typed_query_fields_const_for_typescript(fields, resource) do
+  @doc """
+  Formats a field selection list as a TypeScript const expression.
+  """
+  def format_fields_const_for_typescript(fields, resource) do
     "[" <> format_fields_const_array(fields, resource) <> "]"
   end
 
-  defp format_typed_query_fields_type_for_typescript(fields, resource) do
+  @doc """
+  Formats a field selection list as a TypeScript type expression.
+  """
+  def format_fields_type_for_typescript(fields, resource) do
     "[" <> format_fields_type_array(fields, resource) <> "]"
   end
 

@@ -475,6 +475,51 @@ defmodule AshTypescript.Rpc.Codegen.TypescriptStatic do
         >
       : {};
 
+    export type GeneratedRpcIdentity =
+      | {
+          kind: "field";
+          field: string;
+        }
+      | {
+          kind: "fields";
+          fields: readonly string[];
+        };
+
+    export type GeneratedRpcReadActionMeta = {
+      action: (...args: any[]) => Promise<unknown>;
+      fields: readonly unknown[];
+    };
+
+    export type GeneratedRpcCreateActionMeta = {
+      action: (...args: any[]) => Promise<unknown>;
+      fields: readonly unknown[];
+      writableFields: readonly string[];
+    };
+
+    export type GeneratedRpcUpdateActionMeta = {
+      action: (...args: any[]) => Promise<unknown>;
+      fields: readonly unknown[];
+      writableFields: readonly string[];
+      identity: GeneratedRpcIdentity;
+    };
+
+    export type GeneratedRpcDeleteActionMeta = {
+      action: (...args: any[]) => Promise<unknown>;
+      identity: GeneratedRpcIdentity;
+    };
+
+    export type GeneratedRpcResourceMeta = {
+      resourceName: string;
+      schemaName: string;
+      actions: {
+        list: GeneratedRpcReadActionMeta | null;
+        listSince: GeneratedRpcReadActionMeta | null;
+        create: GeneratedRpcCreateActionMeta | null;
+        update: GeneratedRpcUpdateActionMeta | null;
+        delete: GeneratedRpcDeleteActionMeta | null;
+      };
+    };
+
     // Pagination conditional types
     // Checks if a page configuration object has any pagination parameters
     export type HasPaginationParams<Page> =
