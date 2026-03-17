@@ -1,5 +1,3 @@
 defmodule MemeGenerator.Repo do
-  use Ecto.Repo,
-    otp_app: :meme_generator,
-    adapter: Ecto.Adapters.SQLite3
+  use AshSqlite.Repo, otp_app: :meme_generator
 end

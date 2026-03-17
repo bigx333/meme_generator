@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+  --app-bg: #05060b;
+  --app-card: rgba(255, 255, 255, 0.05);
+  --app-card-strong: rgba(12, 18, 34, 0.82);
+  --app-border: rgba(255, 255, 255, 0.1);
+  --app-text: #f8fafc;
+  --app-muted: rgba(226, 232, 240, 0.76);
+  --app-cyan: #7dd3fc;
+  --app-indigo: #818cf8;
+  --app-lime: #d9f99d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--app-bg);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(99, 102, 241, 0.18), transparent 30%),
+    radial-gradient(circle at 82% 0%, rgba(45, 212, 191, 0.12), transparent 26%),
+    radial-gradient(circle at 50% 84%, rgba(244, 63, 94, 0.09), transparent 28%),
+    var(--app-bg);
+  color: var(--app-text);
+  font-family: 'Space Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  background: rgba(125, 211, 252, 0.25);
+}
+
+.meme-display {
+  font-family: 'Anton', Impact, 'Arial Black', sans-serif;
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(20px);
+}
