@@ -1,7 +1,9 @@
 import { observable, syncState, type ObservableParam } from '@legendapp/state'
 import { observablePersistIndexedDB } from '@legendapp/state/persist-plugins/indexeddb'
+import { useValue } from '@legendapp/state/react'
 import { syncedCrud } from '@legendapp/state/sync-plugins/crud'
 
+import { normalizeCollection, type AshCollectionRpc } from '@/lib/ashSync'
 import { subscribeToResource } from '@/lib/realtime'
 
 const persistPlugin = observablePersistIndexedDB({
@@ -11,10 +13,7 @@ const persistPlugin = observablePersistIndexedDB({
 })
 
 type CollectionConfig<TItem extends { id: number }> = {
-  rpc: {
-    list: () => Promise<TItem[]>
-    listSince?: (since: number) => Promise<TItem[]>
-  }
+  rpc: AshCollectionRpc<TItem>
   persistName: 'templates' | 'memes'
   resourceName: string
 }
@@ -52,4 +51,8 @@ export function createSyncedAshCollection<TItem extends { id: number }>(config: 
 
 export async function syncCollection(value$: ObservableParam<unknown>) {
   await syncState(value$).sync()
+}
+
+export function useSyncedCollection<TItem>(value$: ObservableParam<unknown>): TItem[] {
+  return normalizeCollection<TItem>(useValue(value$))
 }
