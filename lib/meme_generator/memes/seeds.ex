@@ -7,33 +7,26 @@ defmodule MemeGenerator.Memes.Seeds do
   @seed_path Path.expand("../../../priv/meme-templates.json", __DIR__)
 
   def seed_templates! do
-    if templates_seeded?() do
-      :ok
-    else
-      @seed_path
-      |> File.read!()
-      |> Jason.decode!()
-      |> Enum.each(fn template ->
-        attrs = normalize_template(template)
+    @seed_path
+    |> File.read!()
+    |> Jason.decode!()
+    |> Enum.each(fn template ->
+      attrs = normalize_template(template)
 
-        Template
-        |> Ash.Changeset.for_create(:create, attrs)
-        |> Ash.create!(domain: Memes)
-      end)
+      case Ash.get(Template, attrs.id, domain: Memes) do
+        {:ok, nil} ->
+          Template
+          |> Ash.Changeset.for_create(:create, attrs)
+          |> Ash.create!(domain: Memes)
 
-      :ok
-    end
-  end
+        {:ok, existing} ->
+          existing
+          |> Ash.Changeset.for_update(:update, Map.delete(attrs, :id))
+          |> Ash.update!(domain: Memes)
+      end
+    end)
 
-  defp templates_seeded? do
-    Template
-    |> Ash.Query.for_read(:read, %{})
-    |> Ash.Query.limit(1)
-    |> Ash.read!(domain: Memes)
-    |> case do
-      [] -> false
-      [_template | _rest] -> true
-    end
+    :ok
   end
 
   defp normalize_template(template) do

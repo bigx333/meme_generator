@@ -2,10 +2,14 @@ import {
   buildCSRFHeaders,
   createMeme,
   listMemes,
+  listMemesSince,
   listTemplates,
+  listTemplatesSince,
   type CreateMemeFields,
   type ListMemesFields,
+  type ListMemesSinceFields,
   type ListTemplatesFields,
+  type ListTemplatesSinceFields,
 } from '../../js/ash_rpc'
 import {
   memeLineSchema,
@@ -25,18 +29,21 @@ const templateFields = [
   'boxCount',
   'source',
   'createdAt',
+  'updatedAt',
   { placements: ['id', 'label', 'x', 'y', 'width', 'height', 'align'] },
   { aiPlacements: ['id', 'label', 'x', 'y', 'width', 'height', 'align'] },
-] as unknown as ListTemplatesFields
+] as unknown as ListTemplatesFields & ListTemplatesSinceFields
 
 const memeFields = [
   'id',
   'templateId',
   'label',
   'createdAt',
+  'updatedAt',
+  'archivedAt',
   'renderDataUrl',
   { lines: ['id', 'text', 'align'] },
-] as unknown as ListMemesFields
+] as unknown as ListMemesFields & ListMemesSinceFields
 
 function unwrapResult<T>(
   result:
@@ -65,7 +72,12 @@ function normalizeTemplate(value: unknown): MemeTemplate {
 }
 
 function normalizeMeme(value: unknown): Meme {
-  return memeSchema.parse(value)
+  const base = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+
+  return memeSchema.parse({
+    ...base,
+    archivedAt: normalizeUnixTimestamp(base.archivedAt),
+  })
 }
 
 function buildLabel(templateName: string, lines: MemeLine[]): string {
@@ -77,20 +89,46 @@ function rpcHeaders() {
   return buildCSRFHeaders()
 }
 
-export async function fetchTemplates(): Promise<MemeTemplate[]> {
-  const response = await listTemplates({
-    fields: templateFields,
-    headers: rpcHeaders(),
-  })
+function normalizeUnixTimestamp(value: unknown): number | null | undefined {
+  if (value == null) return value as null | undefined
+  if (typeof value === 'number') return value
+
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    return Number.isNaN(parsed) ? null : parsed
+  }
+
+  return null
+}
+
+export async function fetchTemplates(params?: { lastSync?: number }): Promise<MemeTemplate[]> {
+  const response =
+    params?.lastSync != null
+      ? await listTemplatesSince({
+          fields: templateFields,
+          headers: rpcHeaders(),
+          input: { since: params.lastSync },
+        })
+      : await listTemplates({
+          fields: templateFields,
+          headers: rpcHeaders(),
+        })
 
   return unwrapList(unwrapResult(response)).map((item) => normalizeTemplate(item))
 }
 
-export async function fetchMemes(): Promise<Meme[]> {
-  const response = await listMemes({
-    fields: memeFields,
-    headers: rpcHeaders(),
-  })
+export async function fetchMemes(params?: { lastSync?: number }): Promise<Meme[]> {
+  const response =
+    params?.lastSync != null
+      ? await listMemesSince({
+          fields: memeFields,
+          headers: rpcHeaders(),
+          input: { since: params.lastSync },
+        })
+      : await listMemes({
+          fields: memeFields,
+          headers: rpcHeaders(),
+        })
 
   return unwrapList(unwrapResult(response))
     .map((item) => normalizeMeme(item))

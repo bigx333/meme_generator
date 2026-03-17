@@ -13,15 +13,19 @@ const persistPlugin = observablePersistIndexedDB({
 type CollectionConfig<TItem extends { id: number }> = {
   persistName: 'templates' | 'memes'
   resourceName: string
-  list: () => Promise<TItem[]>
+  list: (params?: { lastSync?: number }) => Promise<TItem[]>
 }
 
 export function createSyncedAshCollection<TItem extends { id: number }>(config: CollectionConfig<TItem>) {
   return observable(
-    syncedCrud<TItem, TItem, 'array'>({
-      as: 'array',
+    syncedCrud<TItem, TItem, 'object'>({
+      as: 'object',
+      changesSince: 'last-sync',
       fieldId: 'id',
-      list: async () => config.list(),
+      fieldUpdatedAt: 'updatedAt',
+      fieldDeleted: 'archivedAt',
+      list: async (params) => config.list({ lastSync: params.lastSync }),
+      mode: 'merge',
       persist: {
         name: config.persistName,
         plugin: persistPlugin,

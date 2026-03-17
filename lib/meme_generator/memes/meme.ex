@@ -2,7 +2,7 @@ defmodule MemeGenerator.Memes.Meme do
   use Ash.Resource,
     domain: MemeGenerator.Memes,
     data_layer: AshSqlite.DataLayer,
-    extensions: [AshTypescript.Resource],
+    extensions: [AshTypescript.Resource, AshArchival.Resource],
     notifiers: [Ash.Notifier.PubSub]
 
   sqlite do
@@ -12,6 +12,10 @@ defmodule MemeGenerator.Memes.Meme do
 
   typescript do
     type_name("Meme")
+  end
+
+  archive do
+    exclude_read_actions [:list_since]
   end
 
   pub_sub do
@@ -26,14 +30,30 @@ defmodule MemeGenerator.Memes.Meme do
   end
 
   actions do
-    defaults [:read, :destroy]
+    defaults [:read]
 
     create :create do
       accept [:template_id, :label, :lines, :render_data_url]
+
+      change set_attribute(:updated_at, &__MODULE__.now_unix_ms/0)
     end
 
     update :update do
       accept [:template_id, :label, :lines, :render_data_url]
+
+      change set_attribute(:updated_at, &__MODULE__.now_unix_ms/0)
+    end
+
+    destroy :destroy do
+      change set_attribute(:updated_at, &__MODULE__.now_unix_ms/0)
+    end
+
+    read :list_since do
+      argument :since, :integer do
+        allow_nil? false
+      end
+
+      filter expr(updated_at > ^arg(:since))
     end
 
     read :get do
@@ -64,6 +84,17 @@ defmodule MemeGenerator.Memes.Meme do
       public? true
       writable? false
     end
+
+    attribute :updated_at, :integer do
+      allow_nil? false
+      public? true
+      writable? false
+    end
+
+    attribute :archived_at, :utc_datetime_usec do
+      public? true
+      writable? false
+    end
   end
 
   relationships do
@@ -78,6 +109,10 @@ defmodule MemeGenerator.Memes.Meme do
 
   def now_unix do
     DateTime.utc_now() |> DateTime.to_unix()
+  end
+
+  def now_unix_ms do
+    System.system_time(:millisecond)
   end
 
   def sync_payload(notification) do

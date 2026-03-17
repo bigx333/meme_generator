@@ -27,6 +27,7 @@ export const memeTemplateSchema = z.object({
   aiPlacements: z.array(placementSchema).default([]),
   source: z.string().default('imgflip'),
   createdAt: z.number().optional(),
+  updatedAt: z.number(),
 })
 
 export const memeSchema = z.object({
@@ -35,7 +36,9 @@ export const memeSchema = z.object({
   label: z.string().nullable().optional(),
   lines: z.array(memeLineSchema),
   renderDataUrl: z.string().nullable().optional(),
+  archivedAt: z.number().nullable().optional(),
   createdAt: z.number(),
+  updatedAt: z.number(),
 })
 
 export type Placement = z.infer<typeof placementSchema>

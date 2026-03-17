@@ -35,6 +35,7 @@ defmodule MemeGenerator.MixProject do
     [
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:ash, "~> 3.16"},
+      {:ash_archival, "~> 1.0"},
       {:ash_phoenix, "~> 2.3"},
       {:ash_sqlite, "~> 0.2.16"},
       {:ash_typescript, "~> 0.15.3"},

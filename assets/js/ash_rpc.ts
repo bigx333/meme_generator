@@ -5,7 +5,7 @@
 
 
 
-
+export type UtcDateTimeUsec = string;
 
 // MemeGeneratorMemesLine Schema
 export type MemeGeneratorMemesLineResourceSchema = {
@@ -37,11 +37,13 @@ export type MemeGeneratorMemesLineInputSchema = {
 // Meme Schema
 export type MemeResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "label" | "renderDataUrl" | "createdAt" | "templateId";
+  __primitiveFields: "id" | "label" | "renderDataUrl" | "createdAt" | "updatedAt" | "archivedAt" | "templateId";
   id: number;
   label: string | null;
   renderDataUrl: string | null;
   createdAt: number;
+  updatedAt: number;
+  archivedAt: UtcDateTimeUsec | null;
   templateId: number;
   lines: { __type: "Relationship"; __array: true; __resource: MemeGeneratorMemesLineResourceSchema; };
   template: { __type: "Relationship"; __resource: MemeTemplateResourceSchema; };
@@ -51,11 +53,13 @@ export type MemeResourceSchema = {
 
 export type MemeAttributesOnlySchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "label" | "renderDataUrl" | "createdAt" | "templateId";
+  __primitiveFields: "id" | "label" | "renderDataUrl" | "createdAt" | "updatedAt" | "archivedAt" | "templateId";
   id: number;
   label: string | null;
   renderDataUrl: string | null;
   createdAt: number;
+  updatedAt: number;
+  archivedAt: UtcDateTimeUsec | null;
   templateId: number;
   lines: { __type: "Relationship"; __array: true; __resource: MemeGeneratorMemesLineAttributesOnlySchema; };
 };
@@ -103,7 +107,7 @@ export type MemeGeneratorMemesPlacementInputSchema = {
 // MemeTemplate Schema
 export type MemeTemplateResourceSchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "name" | "imageUrl" | "width" | "height" | "boxCount" | "source" | "createdAt";
+  __primitiveFields: "id" | "name" | "imageUrl" | "width" | "height" | "boxCount" | "source" | "createdAt" | "updatedAt";
   id: number;
   name: string;
   imageUrl: string;
@@ -112,6 +116,7 @@ export type MemeTemplateResourceSchema = {
   boxCount: number;
   source: string;
   createdAt: number;
+  updatedAt: number;
   placements: { __type: "Relationship"; __array: true; __resource: MemeGeneratorMemesPlacementResourceSchema; };
   aiPlacements: { __type: "Relationship"; __array: true; __resource: MemeGeneratorMemesPlacementResourceSchema; };
   memes: { __type: "Relationship"; __array: true; __resource: MemeResourceSchema; };
@@ -121,7 +126,7 @@ export type MemeTemplateResourceSchema = {
 
 export type MemeTemplateAttributesOnlySchema = {
   __type: "Resource";
-  __primitiveFields: "id" | "name" | "imageUrl" | "width" | "height" | "boxCount" | "source" | "createdAt";
+  __primitiveFields: "id" | "name" | "imageUrl" | "width" | "height" | "boxCount" | "source" | "createdAt" | "updatedAt";
   id: number;
   name: string;
   imageUrl: string;
@@ -130,6 +135,7 @@ export type MemeTemplateAttributesOnlySchema = {
   boxCount: number;
   source: string;
   createdAt: number;
+  updatedAt: number;
   placements: { __type: "Relationship"; __array: true; __resource: MemeGeneratorMemesPlacementAttributesOnlySchema; };
   aiPlacements: { __type: "Relationship"; __array: true; __resource: MemeGeneratorMemesPlacementAttributesOnlySchema; };
 };
@@ -204,6 +210,26 @@ export type MemeFilterInput = {
     lessThan?: number;
     lessThanOrEqual?: number;
     in?: Array<number>;
+  };
+
+  updatedAt?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  archivedAt?: {
+    eq?: UtcDateTimeUsec;
+    notEq?: UtcDateTimeUsec;
+    greaterThan?: UtcDateTimeUsec;
+    greaterThanOrEqual?: UtcDateTimeUsec;
+    lessThan?: UtcDateTimeUsec;
+    lessThanOrEqual?: UtcDateTimeUsec;
+    in?: Array<UtcDateTimeUsec>;
   };
 
   templateId?: {
@@ -362,6 +388,16 @@ export type MemeTemplateFilterInput = {
   };
 
   createdAt?: {
+    eq?: number;
+    notEq?: number;
+    greaterThan?: number;
+    greaterThanOrEqual?: number;
+    lessThan?: number;
+    lessThanOrEqual?: number;
+    in?: Array<number>;
+  };
+
+  updatedAt?: {
     eq?: number;
     notEq?: number;
     greaterThan?: number;
@@ -1142,6 +1178,58 @@ export async function listMemes<Fields extends ListMemesFields, Config extends L
 }
 
 
+export type ListMemesSinceInput = {
+  since: number;
+};
+
+
+type ListMemesSinceSchema = Omit<MemeResourceSchema, 'template'> & {
+  template: { __type: "Relationship"; __resource: MemeTemplateAttributesOnlySchema; };
+};
+
+export type ListMemesSinceFields = UnifiedFieldSelection<ListMemesSinceSchema>[];
+export type InferListMemesSinceResult<
+  Fields extends ListMemesSinceFields,
+> = Array<InferResult<ListMemesSinceSchema, Fields>>;
+
+export type ListMemesSinceResult<Fields extends ListMemesSinceFields> = | { success: true; data: InferListMemesSinceResult<Fields>; }
+| { success: false; errors: AshRpcError[]; }
+
+;
+
+/**
+ * Read Meme records
+ *
+ * @ashActionType :read
+ */
+export async function listMemesSince<Fields extends ListMemesSinceFields>(
+  config: {
+  tenant?: string;
+  input: ListMemesSinceInput;
+  fields: Fields;
+  filter?: MemeFilterInput;
+  sort?: string;
+  headers?: Record<string, string>;
+  fetchOptions?: RequestInit;
+  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+): Promise<ListMemesSinceResult<Fields>> {
+  const payload = {
+    action: "list_memes_since",
+    ...(config.tenant !== undefined && { tenant: config.tenant }),
+    input: config.input,
+    ...(config.fields !== undefined && { fields: config.fields }),
+    ...(config.filter && { filter: config.filter }),
+    ...(config.sort && { sort: config.sort })
+  };
+
+  return executeActionRpcRequest<ListMemesSinceResult<Fields>>(
+    payload,
+    config
+  );
+}
+
+
 export type UpdateMemeInput = {
   templateId?: number;
   label?: string | null;
@@ -1393,6 +1481,53 @@ export async function listTemplates<Fields extends ListTemplatesFields, Config e
   };
 
   return executeActionRpcRequest<ListTemplatesResult<Fields, Config["page"]>>(
+    payload,
+    config
+  );
+}
+
+
+export type ListTemplatesSinceInput = {
+  since: number;
+};
+
+export type ListTemplatesSinceFields = UnifiedFieldSelection<MemeTemplateResourceSchema>[];
+export type InferListTemplatesSinceResult<
+  Fields extends ListTemplatesSinceFields,
+> = Array<InferResult<MemeTemplateResourceSchema, Fields>>;
+
+export type ListTemplatesSinceResult<Fields extends ListTemplatesSinceFields> = | { success: true; data: InferListTemplatesSinceResult<Fields>; }
+| { success: false; errors: AshRpcError[]; }
+
+;
+
+/**
+ * Read Template records
+ *
+ * @ashActionType :read
+ */
+export async function listTemplatesSince<Fields extends ListTemplatesSinceFields>(
+  config: {
+  tenant?: string;
+  input: ListTemplatesSinceInput;
+  fields: Fields;
+  filter?: MemeTemplateFilterInput;
+  sort?: string;
+  headers?: Record<string, string>;
+  fetchOptions?: RequestInit;
+  customFetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+): Promise<ListTemplatesSinceResult<Fields>> {
+  const payload = {
+    action: "list_templates_since",
+    ...(config.tenant !== undefined && { tenant: config.tenant }),
+    input: config.input,
+    ...(config.fields !== undefined && { fields: config.fields }),
+    ...(config.filter && { filter: config.filter }),
+    ...(config.sort && { sort: config.sort })
+  };
+
+  return executeActionRpcRequest<ListTemplatesSinceResult<Fields>>(
     payload,
     config
   );

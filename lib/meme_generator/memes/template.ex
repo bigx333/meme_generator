@@ -40,6 +40,8 @@ defmodule MemeGenerator.Memes.Template do
         :ai_placements,
         :source
       ]
+
+      change set_attribute(:updated_at, &__MODULE__.now_unix_ms/0)
     end
 
     update :update do
@@ -53,6 +55,16 @@ defmodule MemeGenerator.Memes.Template do
         :ai_placements,
         :source
       ]
+
+      change set_attribute(:updated_at, &__MODULE__.now_unix_ms/0)
+    end
+
+    read :list_since do
+      argument :since, :integer do
+        allow_nil? false
+      end
+
+      filter expr(updated_at > ^arg(:since))
     end
 
     read :get do
@@ -115,6 +127,12 @@ defmodule MemeGenerator.Memes.Template do
       public? true
       writable? false
     end
+
+    attribute :updated_at, :integer do
+      allow_nil? false
+      public? true
+      writable? false
+    end
   end
 
   relationships do
@@ -126,6 +144,10 @@ defmodule MemeGenerator.Memes.Template do
 
   def now_unix do
     DateTime.utc_now() |> DateTime.to_unix()
+  end
+
+  def now_unix_ms do
+    System.system_time(:millisecond)
   end
 
   def sync_payload(notification) do
