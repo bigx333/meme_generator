@@ -5,14 +5,12 @@ import type { Meme, MemeTemplate } from '@/lib/types'
 import { createSyncedAshCollection, syncCollection } from './syncedAsh'
 
 export const templates$ = createSyncedAshCollection<MemeTemplate>({
-  changesSince: 'last-sync',
   persistName: 'templates',
   resourceName: 'MemeTemplate',
   rpc: templatesCollectionRpc,
 })
 
 export const memes$ = createSyncedAshCollection<Meme>({
-  changesSince: 'last-sync',
   persistName: 'memes',
   resourceName: 'Meme',
   rpc: memesCollectionRpc,

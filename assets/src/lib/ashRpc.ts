@@ -32,7 +32,7 @@ const templateFields = [
   'updatedAt',
   { placements: ['id', 'label', 'x', 'y', 'width', 'height', 'align'] },
   { aiPlacements: ['id', 'label', 'x', 'y', 'width', 'height', 'align'] },
-] as unknown as ListTemplatesFields & ListTemplatesSinceFields
+] satisfies ListTemplatesFields & ListTemplatesSinceFields
 
 const memeFields = [
   'id',
@@ -43,7 +43,7 @@ const memeFields = [
   'archivedAt',
   'renderDataUrl',
   { lines: ['id', 'text', 'align'] },
-] as unknown as ListMemesFields & ListMemesSinceFields
+] satisfies ListMemesFields & ListMemesSinceFields & CreateMemeFields
 
 function unwrapResult<T>(
   result:
@@ -159,22 +159,6 @@ export const memesCollectionRpc = createIncrementalListRpc({
   sort: (left, right) => right.createdAt - left.createdAt,
 })
 
-export async function listTemplatesRpc(): Promise<MemeTemplate[]> {
-  return templatesCollectionRpc.list()
-}
-
-export async function listTemplatesSinceRpc(since: number): Promise<MemeTemplate[]> {
-  return templatesCollectionRpc.listSince(since)
-}
-
-export async function listMemesRpc(): Promise<Meme[]> {
-  return memesCollectionRpc.list()
-}
-
-export async function listMemesSinceRpc(since: number): Promise<Meme[]> {
-  return memesCollectionRpc.listSince(since)
-}
-
 export async function createMemeRecord(input: {
   template: MemeTemplate
   lines: MemeLine[]
@@ -189,7 +173,7 @@ export async function createMemeRecord(input: {
       lines,
       renderDataUrl: input.renderDataUrl ?? null,
     },
-    fields: memeFields as unknown as CreateMemeFields,
+    fields: memeFields,
   })
 
   return normalizeMeme(unwrapResult(response))

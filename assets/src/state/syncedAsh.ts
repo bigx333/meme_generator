@@ -2,7 +2,6 @@ import { observable, syncState, type ObservableParam } from '@legendapp/state'
 import { observablePersistIndexedDB } from '@legendapp/state/persist-plugins/indexeddb'
 import { syncedCrud } from '@legendapp/state/sync-plugins/crud'
 
-import type { IncrementalListRpc } from '@/lib/ashRpc'
 import { subscribeToResource } from '@/lib/realtime'
 
 const persistPlugin = observablePersistIndexedDB({
@@ -12,7 +11,6 @@ const persistPlugin = observablePersistIndexedDB({
 })
 
 type CollectionConfig<TItem extends { id: number }> = {
-  changesSince?: 'last-sync'
   rpc: {
     list: () => Promise<TItem[]>
     listSince?: (since: number) => Promise<TItem[]>
@@ -22,14 +20,16 @@ type CollectionConfig<TItem extends { id: number }> = {
 }
 
 export function createSyncedAshCollection<TItem extends { id: number }>(config: CollectionConfig<TItem>) {
+  const changesSince = config.rpc.listSince ? 'last-sync' : undefined
+
   return observable(
     syncedCrud<TItem, TItem>({
-      changesSince: config.changesSince,
+      changesSince,
       fieldId: 'id',
       fieldUpdatedAt: 'updatedAt',
       fieldDeleted: 'archivedAt',
       list: async ({ lastSync }) => {
-        if (config.changesSince === 'last-sync' && lastSync != null && config.rpc.listSince) {
+        if (changesSince === 'last-sync' && lastSync != null && config.rpc.listSince) {
           return config.rpc.listSince(lastSync)
         }
 
