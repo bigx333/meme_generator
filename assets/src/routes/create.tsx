@@ -6,10 +6,9 @@ import { z } from 'zod'
 
 import { MemePreview } from '@/components/MemePreview'
 import { getMemeExample } from '@/data/meme-examples'
-import { createMemeRecord } from '@/lib/ashRpc'
 import { normalizeLines, renderMemeToDataUrl } from '@/lib/memeRenderer'
 import type { MemeLine, MemeTemplate } from '@/lib/types'
-import { ensureMemeDataLoaded, refreshMemes, useTemplates } from '@/state/memes'
+import { createMeme, ensureMemeDataLoaded, useTemplates } from '@/state/memes'
 
 type CreateMemeLineInput = MemeLine & { hidden: boolean }
 
@@ -96,14 +95,13 @@ function CreateMemePage() {
 
       try {
         const dataUrl = await renderMemeToDataUrl(activeTemplate, renderedLines)
-        const created = await createMemeRecord({
+        const created = createMeme({
           template: activeTemplate,
           lines: renderedLines,
           renderDataUrl: dataUrl,
         })
         setPreviewDataUrl(dataUrl)
-        await refreshMemes()
-        setSaveStatus(`Saved ${created.label ?? activeTemplate.name} to the gallery.`)
+        setSaveStatus(`Added ${created.label ?? activeTemplate.name} to the gallery.`)
       } finally {
         setIsSaving(false)
       }
