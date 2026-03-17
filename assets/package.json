@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --host 127.0.0.1 --port 5173",
+    "dev": "vite dev --port 5173",
     "build": "vite build && mkdir -p ../priv/static/assets ../priv/static/app && cp -R .output/public/assets/. ../priv/static/assets/ && cp -R node_modules/.nitro/vite/services/ssr/assets/. ../priv/static/assets/ && cp .output/public/_shell.html ../priv/static/app/_shell.html",
     "dev:phoenix": "vite build --watch",
     "preview": "vite preview --host 127.0.0.1 --port 4173",

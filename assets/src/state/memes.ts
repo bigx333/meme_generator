@@ -24,10 +24,16 @@ export async function refreshMemes() {
   await syncCollection(memes$)
 }
 
+function normalizeCollection<TItem>(value: unknown): TItem[] {
+  if (Array.isArray(value)) return value as TItem[]
+  if (value && typeof value === 'object') return Object.values(value) as TItem[]
+  return []
+}
+
 export function useTemplates(): MemeTemplate[] {
-  return (useValue(templates$) as MemeTemplate[] | undefined) ?? []
+  return normalizeCollection<MemeTemplate>(useValue(templates$))
 }
 
 export function useMemes(): Meme[] {
-  return (useValue(memes$) as Meme[] | undefined) ?? []
+  return normalizeCollection<Meme>(useValue(memes$))
 }
