@@ -1,5 +1,5 @@
 import { internal, syncState, type ObservableParam } from '@legendapp/state'
-import { type SyncedSetParams, type SyncedSubscribeParams } from '@legendapp/state/sync'
+import { type SyncedSubscribeParams } from '@legendapp/state/sync'
 import { syncedCrud, type SyncedCrudPropsBase } from '@legendapp/state/sync-plugins/crud'
 import type { ZodType } from 'zod'
 
@@ -44,61 +44,111 @@ export type AshDestroyRpc<TIdentity, TResult = unknown> = (params: {
   identity: TIdentity
 }) => Promise<RpcResult<TResult>>
 
-export type AshCreateMutation<TItem extends object, TFields, TInput = unknown> = {
-  action: AshActionRpc<TFields, TInput>
-  fields?: Array<keyof TItem & string>
-  input?: (item: TItem) => TInput
+export type AshRpcIdentityDescriptor =
+  | { kind: 'field'; field: string }
+  | { kind: 'fields'; fields: readonly string[] }
+
+export type AshRpcReadActionMeta<TFields> = {
+  action: (...args: any[]) => Promise<unknown>
+  fields: TFields
 }
 
-export type AshUpdateMutation<TItem extends object, TFields, TInput = unknown, TIdentity = AshId> = {
-  action: AshActionWithIdentityRpc<TFields, TIdentity, TInput>
-  fields?: Array<keyof TItem & string>
+export type AshRpcListSinceActionMeta<TFields> = {
+  action: (...args: any[]) => Promise<unknown>
+  fields: TFields
+}
+
+export type AshRpcCreateActionMeta<TFields> = {
+  action: (...args: any[]) => Promise<unknown>
+  fields: TFields
+  writableFields: readonly string[]
+}
+
+export type AshRpcUpdateActionMeta<TFields> = {
+  action: (...args: any[]) => Promise<unknown>
+  fields: TFields
+  identity: AshRpcIdentityDescriptor
+  writableFields: readonly string[]
+}
+
+export type AshRpcDeleteActionMeta = {
+  action: (...args: any[]) => Promise<unknown>
+  identity: AshRpcIdentityDescriptor
+}
+
+export type AshRpcResourceMeta<TFields> = {
+  resourceName: string
+  schemaName: string
+  actions: {
+    create: AshRpcCreateActionMeta<TFields> | null
+    delete: AshRpcDeleteActionMeta | null
+    list: AshRpcReadActionMeta<TFields> | null
+    listSince: AshRpcListSinceActionMeta<TFields> | null
+    update: AshRpcUpdateActionMeta<TFields> | null
+  }
+}
+
+export type AshCreateOverride<TItem extends object, TFields, TInput = unknown> = {
+  action?: AshActionRpc<TFields, TInput>
+  fields?: TFields
+  input?: (item: TItem) => TInput
+  writableFields?: Array<keyof TItem & string>
+}
+
+export type AshUpdateOverride<TItem extends object, TFields, TInput = unknown, TIdentity = unknown> = {
+  action?: AshActionWithIdentityRpc<TFields, TIdentity, TInput>
+  fields?: TFields
   identity?: (item: Partial<TItem>) => TIdentity
   input?: (item: Partial<TItem>) => TInput
+  writableFields?: Array<keyof TItem & string>
 }
 
-export type AshDeleteMutation<TItem extends object, TIdentity = AshId> = {
-  action: AshDestroyRpc<TIdentity>
+export type AshDeleteOverride<TItem extends object, TIdentity = unknown> = {
+  action?: AshDestroyRpc<TIdentity>
   identity?: (item: TItem) => TIdentity
 }
 
-export type AshMutations<TItem extends object, TFields> = {
-  create?: AshCreateMutation<TItem, TFields, any>
-  delete?: AshDeleteMutation<TItem, any>
-  update?: AshUpdateMutation<TItem, TFields, any, any>
+export type AshResourceOverrides<TItem extends object, TFields> = {
+  create?: AshCreateOverride<TItem, TFields, any>
+  delete?: AshDeleteOverride<TItem, any>
+  list?: Partial<AshRpcReadActionMeta<TFields>>
+  listSince?: Partial<AshRpcListSinceActionMeta<TFields>>
+  update?: AshUpdateOverride<TItem, TFields, any, any>
 }
 
-export type AshResource<TItem extends object, TFields> = {
+export type AshResource<TItem extends object, TFields, TMeta extends AshRpcResourceMeta<TFields>> = {
   create?: SyncedCrudPropsBase<TItem, TItem>['create']
-  delete?: SyncedCrudPropsBase<TItem, TItem>['delete']
   defaults?: Partial<Record<keyof TItem & string, unknown>>
-  fields: TFields
+  delete?: SyncedCrudPropsBase<TItem, TItem>['delete']
   generateId?: SyncedCrudPropsBase<TItem, TItem>['generateId']
-  list: AshListRpc<TFields>
-  listSince?: AshListSinceRpc<TFields>
-  mutations?: AshMutations<TItem, TFields>
+  meta: TMeta
   onSaved?: SyncedCrudPropsBase<TItem, TItem>['onSaved']
-  resourceName: string
+  overrides?: AshResourceOverrides<TItem, TFields>
   schema: ZodType<TItem>
   sort?: (left: TItem, right: TItem) => number
   timestampFields?: Array<keyof TItem & string>
   update?: SyncedCrudPropsBase<TItem, TItem>['update']
 }
 
-type SyncedAshOptions<TItem extends { id: AshId }, TFields> = Omit<
+type AshParseConfig<TItem extends object> = Pick<
+  AshResource<TItem, unknown, AshRpcResourceMeta<unknown>>,
+  'defaults' | 'schema' | 'timestampFields'
+>
+
+type SyncedAshOptions<TItem extends { id: AshId }, TFields, TMeta extends AshRpcResourceMeta<TFields>> = Omit<
   SyncedCrudPropsBase<TItem, TItem>,
   'get' | 'list' | 'subscribe'
 > &
-  AshResource<TItem, TFields> & {
+  AshResource<TItem, TFields, TMeta> & {
     subscribe?: (params: SyncedSubscribeParams<TItem[]>) => (() => void) | void
     subscribeResource?: (resourceName: string, refresh: () => void) => (() => void) | void
   }
 
 const defaultTimestampFields: TimestampField[] = ['createdAt', 'updatedAt', 'archivedAt']
 
-export function defineAshResource<TItem extends object, TFields>(
-  resource: AshResource<TItem, TFields>,
-): AshResource<TItem, TFields> {
+export function defineAshResource<TItem extends object, TFields, TMeta extends AshRpcResourceMeta<TFields>>(
+  resource: AshResource<TItem, TFields, TMeta>,
+): AshResource<TItem, TFields, TMeta> {
   return resource
 }
 
@@ -122,7 +172,7 @@ export function normalizeCollection<TItem>(value: unknown): TItem[] {
 }
 
 export function parseAshItem<TItem extends object>(
-  resource: Pick<AshResource<TItem, unknown>, 'defaults' | 'schema' | 'timestampFields'>,
+  resource: AshParseConfig<TItem>,
   value: unknown,
 ): TItem {
   const record = value && typeof value === 'object' ? { ...(value as Record<string, unknown>) } : {}
@@ -144,11 +194,12 @@ export function parseAshItem<TItem extends object>(
 
 export async function runAshAction<TItem extends object, TFields, TInput>(config: {
   action: AshActionRpc<TFields, TInput>
+  fields: TFields
   input: TInput
-  resource: Pick<AshResource<TItem, TFields>, 'defaults' | 'fields' | 'schema' | 'timestampFields'>
+  resource: AshParseConfig<TItem>
 }): Promise<TItem> {
   const response = await config.action({
-    fields: config.resource.fields,
+    fields: config.fields,
     headers: ashRpcHeaders(),
     input: config.input,
   })
@@ -163,12 +214,13 @@ export async function runAshActionWithIdentity<TItem extends object, TFields, TI
     identity: TIdentity
     input: TInput
   }) => Promise<RpcResult<unknown>>
+  fields: TFields
   identity: TIdentity
   input: TInput
-  resource: Pick<AshResource<TItem, TFields>, 'defaults' | 'fields' | 'schema' | 'timestampFields'>
+  resource: AshParseConfig<TItem>
 }): Promise<TItem> {
   const response = await config.action({
-    fields: config.resource.fields,
+    fields: config.fields,
     headers: ashRpcHeaders(),
     identity: config.identity,
     input: config.input,
@@ -192,18 +244,17 @@ export async function runAshDestroy<TIdentity>(config: {
   unwrapAshResult(response)
 }
 
-export function syncedAsh<TItem extends { id: AshId }, TFields>(config: SyncedAshOptions<TItem, TFields>) {
+export function syncedAsh<TItem extends { id: AshId }, TFields, TMeta extends AshRpcResourceMeta<TFields>>(
+  config: SyncedAshOptions<TItem, TFields, TMeta>,
+) {
   const {
     create,
-    delete: deleteFn,
     defaults,
-    fields,
+    delete: deleteFn,
     generateId,
-    list,
-    listSince,
-    mutations,
+    meta,
     onSaved,
-    resourceName,
+    overrides,
     schema,
     sort,
     subscribe,
@@ -214,7 +265,23 @@ export function syncedAsh<TItem extends { id: AshId }, TFields>(config: SyncedAs
   } = config
 
   const parse = (value: unknown) => parseAshItem({ defaults, schema, timestampFields }, value)
-  const resource = { defaults, fields, schema, timestampFields } as const
+  const resource = { defaults, schema, timestampFields } as const
+
+  const listMeta = {
+    action: (overrides?.list?.action ?? meta.actions.list?.action) as AshListRpc<TFields> | undefined,
+    fields: overrides?.list?.fields ?? meta.actions.list?.fields,
+  }
+
+  if (!listMeta.action || listMeta.fields == null) {
+    throw new Error(`Ash resource ${meta.resourceName} is missing automatic list metadata`)
+  }
+
+  const listSinceMeta = {
+    action: (overrides?.listSince?.action ?? meta.actions.listSince?.action) as
+      | AshListSinceRpc<TFields>
+      | undefined,
+    fields: overrides?.listSince?.fields ?? meta.actions.listSince?.fields,
+  }
 
   const load = async (request: Promise<RpcResult<ListPayload>>) => {
     const data = unwrapAshList(unwrapAshResult(await request)).map(parse)
@@ -223,11 +290,24 @@ export function syncedAsh<TItem extends { id: AshId }, TFields>(config: SyncedAs
 
   const syncedCreate =
     create ??
-    (mutations?.create
+    (meta.actions.create || overrides?.create
       ? async (item, params) => {
+          const action = (overrides?.create?.action ?? meta.actions.create?.action) as
+            | AshActionRpc<TFields, unknown>
+            | undefined
+          const fields = overrides?.create?.fields ?? meta.actions.create?.fields
+
+          if (!action || fields == null) {
+            throw new Error(`Ash resource ${meta.resourceName} is missing automatic create metadata`)
+          }
+
           const saved = await runAshAction({
-            action: mutations.create!.action,
-            input: buildAshMutationInput(item, mutations.create!),
+            action,
+            fields,
+            input: buildAshMutationInput(item, {
+              input: overrides?.create?.input,
+              writableFields: overrides?.create?.writableFields ?? meta.actions.create?.writableFields,
+            }),
             resource,
           })
 
@@ -243,14 +323,28 @@ export function syncedAsh<TItem extends { id: AshId }, TFields>(config: SyncedAs
 
   const syncedUpdate =
     update ??
-    (mutations?.update
+    (meta.actions.update || overrides?.update
       ? async (item) => {
-          const identity = resolveUpdateIdentity(item, mutations.update!)
+          const action = (overrides?.update?.action ?? meta.actions.update?.action) as
+            | AshActionWithIdentityRpc<TFields, unknown, unknown>
+            | undefined
+          const fields = overrides?.update?.fields ?? meta.actions.update?.fields
+
+          if (!action || fields == null) {
+            throw new Error(`Ash resource ${meta.resourceName} is missing automatic update metadata`)
+          }
 
           return runAshActionWithIdentity({
-            action: mutations.update!.action,
-            identity,
-            input: buildAshMutationInput(item, mutations.update!),
+            action,
+            fields,
+            identity: resolveUpdateIdentity(item, {
+              descriptor: meta.actions.update?.identity ?? null,
+              identity: overrides?.update?.identity,
+            }),
+            input: buildAshMutationInput(item, {
+              input: overrides?.update?.input,
+              writableFields: overrides?.update?.writableFields ?? meta.actions.update?.writableFields,
+            }),
             resource,
           })
         }
@@ -258,17 +352,32 @@ export function syncedAsh<TItem extends { id: AshId }, TFields>(config: SyncedAs
 
   const syncedDelete =
     deleteFn ??
-    (mutations?.delete
+    (meta.actions.delete || overrides?.delete
       ? async (item) => {
+          const action = (overrides?.delete?.action ?? meta.actions.delete?.action) as
+            | AshDestroyRpc<unknown>
+            | undefined
+
+          if (!action) {
+            throw new Error(`Ash resource ${meta.resourceName} is missing automatic delete metadata`)
+          }
+
           await runAshDestroy({
-            action: mutations.delete!.action,
-            identity: resolveDeleteIdentity(item, mutations.delete!),
+            action,
+            identity: resolveDeleteIdentity(item, {
+              descriptor: meta.actions.delete?.identity ?? null,
+              identity: overrides?.delete?.identity,
+            }),
           })
         }
       : undefined)
 
   const inferredChangesSince =
-    listSince ? (rest.changesSince ?? 'last-sync') : rest.changesSince === 'all' ? 'all' : undefined
+    listSinceMeta.action && listSinceMeta.fields != null
+      ? (rest.changesSince ?? 'last-sync')
+      : rest.changesSince === 'all'
+        ? 'all'
+        : undefined
 
   return syncedCrud<TItem, TItem>({
     ...rest,
@@ -276,19 +385,30 @@ export function syncedAsh<TItem extends { id: AshId }, TFields>(config: SyncedAs
     create: syncedCreate,
     delete: syncedDelete,
     list: ({ lastSync }) => {
-      if (inferredChangesSince === 'last-sync' && lastSync != null && listSince) {
+      if (
+        inferredChangesSince === 'last-sync' &&
+        lastSync != null &&
+        listSinceMeta.action &&
+        listSinceMeta.fields != null
+      ) {
+        const listSinceAction = listSinceMeta.action
+        const listSinceFields = listSinceMeta.fields
+
         return load(
-          listSince({
-            fields,
+          listSinceAction({
+            fields: listSinceFields,
             headers: ashRpcHeaders(),
             input: { since: lastSync },
           }),
         )
       }
 
+      const listAction = listMeta.action as AshListRpc<TFields>
+      const listFields = listMeta.fields as TFields
+
       return load(
-        list({
-          fields,
+        listAction({
+          fields: listFields,
           headers: ashRpcHeaders(),
         }),
       )
@@ -299,7 +419,7 @@ export function syncedAsh<TItem extends { id: AshId }, TFields>(config: SyncedAs
       subscribe ??
       (subscribeResource
         ? ({ refresh }) => {
-            return subscribeResource(resourceName, refresh)
+            return subscribeResource(meta.resourceName, refresh)
           }
         : undefined),
     update: syncedUpdate,
@@ -326,22 +446,23 @@ function normalizeUnixTimestamp(value: unknown): number | null | undefined {
   return null
 }
 
-function buildAshMutationInput<TItem, TInput>(
-  item: TItem,
-  mutation: { fields?: Array<keyof TItem & string>; input?: (item: TItem) => TInput },
-): TInput {
+function buildAshMutationInput<TItem, TInput>(item: TItem, mutation: {
+  input?: (item: TItem) => TInput
+  writableFields?: readonly string[]
+}): TInput {
   if (mutation.input) {
     return mutation.input(item)
   }
 
-  if (!mutation.fields) {
-    throw new Error('Ash mutation config requires either input or fields')
+  if (!mutation.writableFields) {
+    throw new Error('Ash mutation metadata requires either input or writableFields')
   }
 
   const input = {} as Record<string, unknown>
+  const source = item as Record<string, unknown>
 
-  for (const field of mutation.fields) {
-    const value = (item as Record<string, unknown>)[field]
+  for (const field of mutation.writableFields) {
+    const value = source[field]
 
     if (value !== undefined) {
       input[field] = value
@@ -363,24 +484,68 @@ function buildCreatePatch<TItem extends { id: AshId }>(localId: AshId, saved: TI
   return patch
 }
 
-function resolveUpdateIdentity<TItem extends { id: AshId }, TFields, TInput, TIdentity>(
+function resolveUpdateIdentity<TItem extends { id: AshId }, TIdentity>(
   item: Partial<TItem>,
-  mutation: AshUpdateMutation<TItem, TFields, TInput, TIdentity>,
+  config: {
+    descriptor: AshRpcIdentityDescriptor | null
+    identity?: (item: Partial<TItem>) => TIdentity
+  },
 ) {
-  if (mutation.identity) {
-    return mutation.identity(item)
+  if (config.identity) {
+    return config.identity(item)
   }
 
-  if (item.id == null) {
-    throw new Error('Ash update mutation requires an id')
+  if (!config.descriptor) {
+    throw new Error('Ash update metadata requires an identity descriptor or override')
   }
 
-  return item.id as TIdentity
+  return buildIdentityFromDescriptor(item, config.descriptor, 'update')
 }
 
 function resolveDeleteIdentity<TItem extends { id: AshId }, TIdentity>(
   item: TItem,
-  mutation: AshDeleteMutation<TItem, TIdentity>,
+  config: {
+    descriptor: AshRpcIdentityDescriptor | null
+    identity?: (item: TItem) => TIdentity
+  },
 ) {
-  return mutation.identity ? mutation.identity(item) : (item.id as TIdentity)
+  if (config.identity) {
+    return config.identity(item)
+  }
+
+  if (!config.descriptor) {
+    throw new Error('Ash delete metadata requires an identity descriptor or override')
+  }
+
+  return buildIdentityFromDescriptor(item, config.descriptor, 'delete')
+}
+
+function buildIdentityFromDescriptor(
+  item: Record<string, unknown>,
+  descriptor: AshRpcIdentityDescriptor,
+  operation: string,
+) {
+  if (descriptor.kind === 'field') {
+    const value = item[descriptor.field]
+
+    if (value == null) {
+      throw new Error(`Cannot ${operation} without identity field "${descriptor.field}"`)
+    }
+
+    return value
+  }
+
+  const identity = {} as Record<string, unknown>
+
+  for (const field of descriptor.fields) {
+    const value = item[field]
+
+    if (value == null) {
+      throw new Error(`Cannot ${operation} without identity field "${field}"`)
+    }
+
+    identity[field] = value
+  }
+
+  return identity
 }

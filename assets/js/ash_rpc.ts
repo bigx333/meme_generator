@@ -713,6 +713,51 @@ export type InferResult<
     >
   : {};
 
+export type GeneratedRpcIdentity =
+  | {
+      kind: "field";
+      field: string;
+    }
+  | {
+      kind: "fields";
+      fields: readonly string[];
+    };
+
+export type GeneratedRpcReadActionMeta = {
+  action: (...args: any[]) => Promise<unknown>;
+  fields: readonly unknown[];
+};
+
+export type GeneratedRpcCreateActionMeta = {
+  action: (...args: any[]) => Promise<unknown>;
+  fields: readonly unknown[];
+  writableFields: readonly string[];
+};
+
+export type GeneratedRpcUpdateActionMeta = {
+  action: (...args: any[]) => Promise<unknown>;
+  fields: readonly unknown[];
+  writableFields: readonly string[];
+  identity: GeneratedRpcIdentity;
+};
+
+export type GeneratedRpcDeleteActionMeta = {
+  action: (...args: any[]) => Promise<unknown>;
+  identity: GeneratedRpcIdentity;
+};
+
+export type GeneratedRpcResourceMeta = {
+  resourceName: string;
+  schemaName: string;
+  actions: {
+    list: GeneratedRpcReadActionMeta | null;
+    listSince: GeneratedRpcReadActionMeta | null;
+    create: GeneratedRpcCreateActionMeta | null;
+    update: GeneratedRpcUpdateActionMeta | null;
+    delete: GeneratedRpcDeleteActionMeta | null;
+  };
+};
+
 // Pagination conditional types
 // Checks if a page configuration object has any pagination parameters
 export type HasPaginationParams<Page> =
@@ -963,6 +1008,90 @@ export async function executeActionRpcRequest<T>(
 
 
 
+
+
+// ============================
+// Resource Metadata
+// ============================
+// Generated runtime metadata for plugin consumers.
+
+// Meme Resource Metadata
+const memeDefaultFields = ["id", "label", { lines: ["id", "text", "align"] }, "renderDataUrl", "createdAt", "updatedAt", "archivedAt", "templateId"] satisfies ListMemesFields & UpdateMemeFields & CreateMemeFields & ListMemesSinceFields;
+
+export const memeResourceMeta = {
+  resourceName: "Meme",
+  schemaName: "MemeResourceSchema",
+  actions: {
+    list: {
+  action: listMemes,
+  fields: memeDefaultFields,
+},
+    listSince: {
+  action: listMemesSince,
+  fields: memeDefaultFields,
+},
+    create: {
+  action: createMeme,
+  fields: memeDefaultFields,
+  writableFields: ["templateId", "label", "lines", "renderDataUrl"] as const,
+},
+    update: {
+  action: updateMeme,
+  fields: memeDefaultFields,
+  writableFields: ["templateId", "label", "lines", "renderDataUrl"] as const,
+  identity: {
+  kind: "field",
+  field: "id",
+},
+},
+    delete: {
+  action: destroyMeme,
+  identity: {
+  kind: "field",
+  field: "id",
+},
+}
+  },
+} satisfies GeneratedRpcResourceMeta;
+
+// MemeTemplate Resource Metadata
+const memeTemplateDefaultFields = ["id", "name", "imageUrl", "width", "height", "boxCount", { placements: ["id", "label", "x", "y", "width", "height", "align"] }, { aiPlacements: ["id", "label", "x", "y", "width", "height", "align"] }, "source", "createdAt", "updatedAt"] satisfies ListTemplatesFields & UpdateTemplateFields & CreateTemplateFields & ListTemplatesSinceFields;
+
+export const memeTemplateResourceMeta = {
+  resourceName: "MemeTemplate",
+  schemaName: "MemeTemplateResourceSchema",
+  actions: {
+    list: {
+  action: listTemplates,
+  fields: memeTemplateDefaultFields,
+},
+    listSince: {
+  action: listTemplatesSince,
+  fields: memeTemplateDefaultFields,
+},
+    create: {
+  action: createTemplate,
+  fields: memeTemplateDefaultFields,
+  writableFields: ["id", "name", "imageUrl", "width", "height", "boxCount", "placements", "aiPlacements", "source"] as const,
+},
+    update: {
+  action: updateTemplate,
+  fields: memeTemplateDefaultFields,
+  writableFields: ["name", "imageUrl", "width", "height", "boxCount", "placements", "aiPlacements", "source"] as const,
+  identity: {
+  kind: "field",
+  field: "id",
+},
+},
+    delete: {
+  action: destroyTemplate,
+  identity: {
+  kind: "field",
+  field: "id",
+},
+}
+  },
+} satisfies GeneratedRpcResourceMeta;
 
 
 export type CreateMemeInput = {

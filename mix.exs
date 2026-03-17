@@ -38,7 +38,7 @@ defmodule MemeGenerator.MixProject do
       {:ash_archival, "~> 1.0"},
       {:ash_phoenix, "~> 2.3"},
       {:ash_sqlite, "~> 0.2.16"},
-      {:ash_typescript, "~> 0.15.3"},
+      {:ash_typescript, path: "vendor/ash_typescript", override: true},
       {:phoenix, "~> 1.8.5"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
