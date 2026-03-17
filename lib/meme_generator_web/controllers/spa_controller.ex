@@ -1,7 +1,7 @@
 defmodule MemeGeneratorWeb.SpaController do
   use MemeGeneratorWeb, :controller
 
-  @shell_path Application.app_dir(:meme_generator, "priv/static/app/_shell.html")
+  defp shell_path, do: Application.app_dir(:meme_generator, "priv/static/app/_shell.html")
   @proxy_headers ~w(cache-control content-type etag vary)
 
   def show(conn, _params) do
@@ -30,10 +30,10 @@ defmodule MemeGeneratorWeb.SpaController do
   end
 
   defp serve_shell(conn) do
-    if File.exists?(@shell_path) do
+    if File.exists?(shell_path()) do
       conn
       |> put_resp_content_type("text/html")
-      |> send_file(200, @shell_path)
+      |> send_file(200, shell_path())
     else
       conn
       |> put_status(:service_unavailable)

@@ -4,16 +4,16 @@ defmodule MemeGenerator.Memes.Seeds do
   alias MemeGenerator.Memes
   alias MemeGenerator.Memes.Template
 
-  @seed_path Path.expand("../../../priv/meme-templates.json", __DIR__)
+  defp seed_path, do: Application.app_dir(:meme_generator, "priv/meme-templates.json")
 
   def seed_templates! do
-    @seed_path
+    seed_path()
     |> File.read!()
     |> Jason.decode!()
     |> Enum.each(fn template ->
       attrs = normalize_template(template)
 
-      case Ash.get(Template, attrs.id, domain: Memes) do
+      case Ash.get(Template, attrs.id, domain: Memes, not_found_error?: false) do
         {:ok, nil} ->
           Template
           |> Ash.Changeset.for_create(:create, attrs)
@@ -23,6 +23,11 @@ defmodule MemeGenerator.Memes.Seeds do
           existing
           |> Ash.Changeset.for_update(:update, Map.delete(attrs, :id))
           |> Ash.update!(domain: Memes)
+
+        {:error, _} ->
+          Template
+          |> Ash.Changeset.for_create(:create, attrs)
+          |> Ash.create!(domain: Memes)
       end
     end)
 
