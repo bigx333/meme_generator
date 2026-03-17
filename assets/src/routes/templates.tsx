@@ -1,9 +1,14 @@
+import { useForm, useStore } from '@tanstack/react-form'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { MemePreview } from '@/components/MemePreview'
 import { ensureMemeDataLoaded, useTemplates } from '@/state/memes'
+
+type TemplatesSearchFormValues = {
+  query: string
+}
 
 export const Route = createFileRoute('/templates')({
   loader: () => ensureMemeDataLoaded(),
@@ -12,7 +17,14 @@ export const Route = createFileRoute('/templates')({
 
 function TemplatesPage() {
   const templates = useTemplates()
-  const [query, setQuery] = useState('')
+  const defaultValues: TemplatesSearchFormValues = {
+    query: '',
+  }
+
+  const form = useForm({
+    defaultValues,
+  })
+  const query = useStore(form.store, (state) => state.values.query)
 
   const filtered = useMemo(
     () =>
@@ -46,12 +58,16 @@ function TemplatesPage() {
 
         <div className="mb-6 flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 shadow-inner shadow-black/30">
           <Search size={16} className="text-cyan-100" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search Drake, Spongebob, Cat..."
-            className="w-full bg-transparent text-sm text-white outline-none"
-          />
+          <form.Field name="query">
+            {(field) => (
+              <input
+                value={field.state.value}
+                onChange={(event) => field.handleChange(event.target.value)}
+                placeholder="Search Drake, Spongebob, Cat..."
+                className="w-full bg-transparent text-sm text-white outline-none"
+              />
+            )}
+          </form.Field>
           <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-cyan-100">
             {filtered.length} / {templates.length}
           </span>
