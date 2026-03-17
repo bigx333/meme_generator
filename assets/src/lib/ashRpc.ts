@@ -101,38 +101,78 @@ function normalizeUnixTimestamp(value: unknown): number | null | undefined {
   return null
 }
 
-export async function fetchTemplates(params?: { lastSync?: number }): Promise<MemeTemplate[]> {
-  const response =
-    params?.lastSync != null
-      ? await listTemplatesSince({
-          fields: templateFields,
-          headers: rpcHeaders(),
-          input: { since: params.lastSync },
-        })
-      : await listTemplates({
-          fields: templateFields,
-          headers: rpcHeaders(),
-        })
+type RpcResult<T> =
+  | { success: true; data: T }
+  | { success: false; errors: Array<{ message?: string; shortMessage?: string }> }
 
-  return unwrapList(unwrapResult(response)).map((item) => normalizeTemplate(item))
+export type IncrementalListRpc<TItem> = {
+  list: () => Promise<TItem[]>
+  listSince: (since: number) => Promise<TItem[]>
 }
 
-export async function fetchMemes(params?: { lastSync?: number }): Promise<Meme[]> {
-  const response =
-    params?.lastSync != null
-      ? await listMemesSince({
-          fields: memeFields,
-          headers: rpcHeaders(),
-          input: { since: params.lastSync },
-        })
-      : await listMemes({
-          fields: memeFields,
-          headers: rpcHeaders(),
-        })
+function createIncrementalListRpc<TItem>(config: {
+  full: () => Promise<RpcResult<unknown[] | { results: unknown[] }>>
+  normalize: (value: unknown) => TItem
+  since: (since: number) => Promise<RpcResult<unknown[] | { results: unknown[] }>>
+  sort?: (left: TItem, right: TItem) => number
+}): IncrementalListRpc<TItem> {
+  const load = async (resultPromise: Promise<RpcResult<unknown[] | { results: unknown[] }>>) => {
+    const items = unwrapList(unwrapResult(await resultPromise)).map((item) => config.normalize(item))
 
-  return unwrapList(unwrapResult(response))
-    .map((item) => normalizeMeme(item))
-    .sort((left, right) => right.createdAt - left.createdAt)
+    return config.sort ? [...items].sort(config.sort) : items
+  }
+
+  return {
+    list: () => load(config.full()),
+    listSince: (since: number) => load(config.since(since)),
+  }
+}
+
+export const templatesCollectionRpc = createIncrementalListRpc({
+  full: () =>
+    listTemplates({
+      fields: templateFields,
+      headers: rpcHeaders(),
+    }),
+  normalize: normalizeTemplate,
+  since: (since) =>
+    listTemplatesSince({
+      fields: templateFields,
+      headers: rpcHeaders(),
+      input: { since },
+    }),
+})
+
+export const memesCollectionRpc = createIncrementalListRpc({
+  full: () =>
+    listMemes({
+      fields: memeFields,
+      headers: rpcHeaders(),
+    }),
+  normalize: normalizeMeme,
+  since: (since) =>
+    listMemesSince({
+      fields: memeFields,
+      headers: rpcHeaders(),
+      input: { since },
+    }),
+  sort: (left, right) => right.createdAt - left.createdAt,
+})
+
+export async function listTemplatesRpc(): Promise<MemeTemplate[]> {
+  return templatesCollectionRpc.list()
+}
+
+export async function listTemplatesSinceRpc(since: number): Promise<MemeTemplate[]> {
+  return templatesCollectionRpc.listSince(since)
+}
+
+export async function listMemesRpc(): Promise<Meme[]> {
+  return memesCollectionRpc.list()
+}
+
+export async function listMemesSinceRpc(since: number): Promise<Meme[]> {
+  return memesCollectionRpc.listSince(since)
 }
 
 export async function createMemeRecord(input: {

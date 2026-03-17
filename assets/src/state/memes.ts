@@ -1,19 +1,21 @@
 import { useValue } from '@legendapp/state/react'
 
-import { fetchMemes, fetchTemplates } from '@/lib/ashRpc'
+import { memesCollectionRpc, templatesCollectionRpc } from '@/lib/ashRpc'
 import type { Meme, MemeTemplate } from '@/lib/types'
 import { createSyncedAshCollection, syncCollection } from './syncedAsh'
 
 export const templates$ = createSyncedAshCollection<MemeTemplate>({
+  changesSince: 'last-sync',
   persistName: 'templates',
   resourceName: 'MemeTemplate',
-  list: fetchTemplates,
+  rpc: templatesCollectionRpc,
 })
 
 export const memes$ = createSyncedAshCollection<Meme>({
+  changesSince: 'last-sync',
   persistName: 'memes',
   resourceName: 'Meme',
-  list: fetchMemes,
+  rpc: memesCollectionRpc,
 })
 
 export async function ensureMemeDataLoaded() {
