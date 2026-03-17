@@ -21,6 +21,7 @@ ENV MIX_ENV="prod"
 
 # Install mix dependencies
 COPY mix.exs mix.lock ./
+COPY vendor vendor
 RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 COPY config/config.exs config/${MIX_ENV}.exs config/
